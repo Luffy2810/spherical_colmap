@@ -91,6 +91,7 @@ enum class CameraModelId {
   kSimpleRadialFisheye = 8,
   kRadialFisheye = 9,
   kThinPrismFisheye = 10,
+  kSpherical = 11,
 };
 
 #ifndef CAMERA_MODEL_DEFINITIONS
@@ -143,7 +144,8 @@ enum class CameraModelId {
   CAMERA_MODEL_CASE(OpenCVFisheyeCameraModel)       \
   CAMERA_MODEL_CASE(FullOpenCVCameraModel)          \
   CAMERA_MODEL_CASE(FOVCameraModel)                 \
-  CAMERA_MODEL_CASE(ThinPrismFisheyeCameraModel)
+  CAMERA_MODEL_CASE(ThinPrismFisheyeCameraModel)    \
+  CAMERA_MODEL_CASE(SphericalCameraModel)     
 #endif
 
 #ifndef CAMERA_MODEL_SWITCH_CASES
@@ -352,6 +354,15 @@ struct RadialFisheyeCameraModel
     : public BaseCameraModel<RadialFisheyeCameraModel> {
   CAMERA_MODEL_DEFINITIONS(
       CameraModelId::kRadialFisheye, "RADIAL_FISHEYE", 1, 2, 2)
+};
+
+//Spherical camera module for 360 degree images, equirectangular projection
+//Parameter list is expected in the following order:
+//    fx, fy, cx, cy
+struct SphericalCameraModel
+    : public BaseCameraModel<SphericalCameraModel> {
+  CAMERA_MODEL_DEFINITIONS(
+      CameraModelId::kSpherical, "SPHERICAL", 1, 2, 0)
 };
 
 // Camera model with radial and tangential distortion coefficients and
@@ -1419,6 +1430,76 @@ void RadialFisheyeCameraModel::Distortion(
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+//SphericalCameraModel equirectangular projection
+//  - `ImgFromCam`: transform normalized camera coordinates to image
+//    coordinates (the inverse of `CamFromImg`). Assumes that the camera
+//    coordinates are given as (u, v, 1).
+//  - `CamFromImg`: transform image coordinates to normalized camera
+//    coordinates (the inverse of `ImgFromCam`). Produces camera coordinates
+//    as (u, v, 1).
+std::string SphericalCameraModel::InitializeParamsInfo() {
+  return "f, cx, cy";
+}
+
+std::array<size_t, 1> SphericalCameraModel::InitializeFocalLengthIdxs() {
+  return {0};
+}
+
+std::array<size_t, 2> SphericalCameraModel::InitializePrincipalPointIdxs() {
+  return {1, 2};
+}
+
+std::array<size_t, 0> SphericalCameraModel::InitializeExtraParamsIdxs() {
+  return {};
+}
+
+std::vector<double> SphericalCameraModel::InitializeParams(
+    const double focal_length, const size_t width, const size_t height) {
+  return {focal_length, width / 2.0, height / 2.0};
+}
+
+template <typename T>
+void SphericalCameraModel::ImgFromCam(
+    const T* params, T u, T v, T w, T* x, T* y) {
+  // std::cout<<"[DEBUG] SPHERICAL CAMERA MODEL"<<std::endl;
+  const T c1 = params[1];
+  const T c2 = params[2];
+  // std::cout<<"[DEBUG] (x,y) c1: "<<c1<<" c2: "<<c2<<std::endl;
+  // std::cout<<"[DEBUG] inpt u: "<<u<<" v: "<<v<<" w: "<<w<<std::endl;
+  const T r = ceres::sqrt(u * u + v * v + w * w);
+  u /= r;
+  v /= r;
+  w /= r;
+  // std::cout<<"[DEBUG] (u,v,w) u: "<<u<<" v: "<<v<<" w: "<<w<<std::endl;
+  const T theta = ceres::atan2(u, w);
+  const T phi = ceres::asin(v);
+  // std::cout<<"[DEBUG] (u,v,w) theta: "<<theta<<" phi: " <<phi<<std::endl;
+  *x = c1 + theta*c1/M_PI;
+  *y = c2 + T(2)*phi*c2/M_PI;
+  // std::cout<<"[DEBUG] out x: "<<*x<<" y: "<<*y<<std::endl;
+}
+
+template <typename T>
+void SphericalCameraModel::CamFromImg(
+    const T* params, const T x, const T y, T* u, T* v, T* w) {
+  // std::cout<<"[DEBUG] SPHERICAL CAMERA MODEL"<<std::endl;
+  // std::cout<<"[DEBUG] (x,y) PI: "<<PI<<std::endl;
+
+  const T c1 = params[1];
+  const T c2 = params[2];
+  // std::cout<<"[DEBUG] (x,y) c1: "<<c1<<" c2: "<<c2<<std::endl;
+  // std::cout<<"[DEBUG] inpt x: "<<x<<" y: "<<y<<std::endl;
+  // Lift points to normalized plane
+  const T theta = (x - c1)*M_PI/c1;
+  const T phi = (y - c2)*M_PI/(T(2)*c2);
+  // std::cout<<"[DEBUG] (x,y) theta: "<<theta<<" phi: " <<phi<<std::endl;
+
+  *u = ceres::cos(phi)*ceres::sin(theta);
+  *v = ceres::sin(phi);
+  *w = ceres::cos(phi)*ceres::cos(theta);
+  // std::cout<<"[DEBUG] out u: "<<*u<<" v: "<<*v<<" w: "<<*w<<std::endl;
+}
 ////////////////////////////////////////////////////////////////////////////////
 // ThinPrismFisheyeCameraModel
 

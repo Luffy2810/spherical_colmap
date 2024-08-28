@@ -266,7 +266,7 @@ IncrementalMapperController::InitializeReconstruction(
     const bool find_init_success = mapper.FindInitialImagePair(
         mapper_options, two_view_geometry, image_id1, image_id2);
     if (!find_init_success) {
-      LOG(INFO) << "=> No good initial image pair found.";
+      LOG(INFO) << "=> No good initial image pair found. "<< reconstruction.NumPoints3D() << " points.";
       return Status::NO_INITIAL_PAIR;
     }
   } else {
@@ -291,14 +291,22 @@ IncrementalMapperController::InitializeReconstruction(
   mapper.RegisterInitialImagePair(
       mapper_options, two_view_geometry, image_id1, image_id2);
 
-  LOG(INFO) << "Global bundle adjustment";
+  LOG(INFO) << "Global bundle adjustment, Number of points: "
+            << reconstruction.NumPoints3D();
   mapper.AdjustGlobalBundle(mapper_options, options_->GlobalBundleAdjustment());
+  LOG(INFO) << "[DEBUG] after bundle adjustment Registered " << reconstruction.NumRegImages()
+            << " images and " << reconstruction.NumPoints3D() << " points.";
   reconstruction.Normalize();
   mapper.FilterPoints(mapper_options);
+  LOG(INFO) << "[DEBUG] after filter Registered " << reconstruction.NumRegImages()
+            << " images and " << reconstruction.NumPoints3D() << " points.";
   mapper.FilterImages(mapper_options);
 
   // Initial image pair failed to register.
   if (reconstruction.NumRegImages() == 0 || reconstruction.NumPoints3D() == 0) {
+    LOG(INFO) << "[DEBUG] Initial image pair failed to register." << "Registered "
+              << reconstruction.NumRegImages() << " images and "
+              << reconstruction.NumPoints3D() << " points.";
     return Status::BAD_INITIAL_PAIR;
   }
 
@@ -365,9 +373,10 @@ IncrementalMapperController::ReconstructSubModel(
         mapper.FindNextImages(mapper_options);
 
     if (next_images.empty()) {
+      LOG(INFO) << "[INFO] No more images to register.";
       break;
     }
-
+    LOG(INFO) << StringPrintf("[DEBUG] Found %d next images", next_images.size());
     image_t next_image_id;
     for (size_t reg_trial = 0; reg_trial < next_images.size(); ++reg_trial) {
       next_image_id = next_images[reg_trial];
@@ -394,6 +403,10 @@ IncrementalMapperController::ReconstructSubModel(
         if (reg_trial >= kMinNumInitialRegTrials &&
             reconstruction->NumRegImages() <
                 static_cast<size_t>(options_->min_model_size)) {
+          LOG(INFO) << "[DEBUG] => Could not register enough images, aborting.";
+          LOG(INFO) <<"[DEBUG] => Registered " << reconstruction->NumRegImages()
+                   << " images and " << reconstruction->NumPoints3D()
+                   << " points.";
           break;
         }
       }
@@ -470,6 +483,7 @@ void IncrementalMapperController::Reconstruct(
 
   for (int num_trials = 0; num_trials < options_->init_num_trials;
        ++num_trials) {
+    LOG(INFO) << StringPrintf("Initialization trial #%d", num_trials + 1);
     if (CheckIfStopped()) {
       break;
     }
@@ -501,6 +515,8 @@ void IncrementalMapperController::Reconstruct(
         break;
 
       case Status::SUCCESS: {
+        LOG(INFO) << "Successfull reconstruction with "
+                  << reconstruction->NumRegImages() << " images.";
         // Remember the total number of registered images before potentially
         // discarding it below due to small size, so we can out of the main
         // loop, if all images were registered.

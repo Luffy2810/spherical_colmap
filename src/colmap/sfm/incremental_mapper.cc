@@ -194,6 +194,7 @@ bool IncrementalMapper::FindInitialImagePair(const Options& options,
 
       if (EstimateInitialTwoViewGeometry(
               options, two_view_geometry, image_id1, image_id2)) {
+        LOG(INFO) << "[DEBUG] Initial pair: " << image_id1 << " and " << image_id2;
         return true;
       }
     }
@@ -315,7 +316,7 @@ void IncrementalMapper::RegisterInitialImagePair(
           image_id1, image_id2);
 
   const double min_tri_angle_rad = DegToRad(options.init_min_tri_angle);
-
+  LOG(INFO) << "[DEBUG] Number of matched features: " << corrs.size();
   // Add 3D point tracks.
   Track track;
   track.Reserve(2);
@@ -332,14 +333,16 @@ void IncrementalMapper::RegisterInitialImagePair(
         TriangulatePoint(cam_from_world1, cam_from_world2, point2D1, point2D2);
     const double tri_angle =
         CalculateTriangulationAngle(proj_center1, proj_center2, xyz);
-    if (tri_angle >= min_tri_angle_rad &&
-        HasPointPositiveDepth(cam_from_world1, xyz) &&
-        HasPointPositiveDepth(cam_from_world2, xyz)) {
+    if (tri_angle >= min_tri_angle_rad){
+        // [TODO] Check if it's spherical equirectangle camera and use the negative depth too and disable negative depth check for general maybe we don't even need this check
+        // HasPointPositiveDepth(cam_from_world1, xyz) &&
+        // HasPointPositiveDepth(cam_from_world2, xyz)) {
       track.Element(0).point2D_idx = corr.point2D_idx1;
       track.Element(1).point2D_idx = corr.point2D_idx2;
       obs_manager_->AddPoint3D(xyz, track);
     }
   }
+  LOG(INFO) << "[DEBUG] Number of 3D points registered: " << reconstruction_->NumPoints3D();
 }
 
 bool IncrementalMapper::RegisterNextImage(const Options& options,
@@ -361,6 +364,7 @@ bool IncrementalMapper::RegisterNextImage(const Options& options,
   // Check if enough 2D-3D correspondences.
   if (obs_manager_->NumVisiblePoints3D(image_id) <
       static_cast<size_t>(options.abs_pose_min_num_inliers)) {
+    LOG(INFO) << "[DEBUG] Image " << image_id << " has too few NumVisiblePoints3D";
     return false;
   }
 
@@ -424,6 +428,7 @@ bool IncrementalMapper::RegisterNextImage(const Options& options,
   // hence we skip some of the 2D-3D correspondences.
   if (tri_points2D.size() <
       static_cast<size_t>(options.abs_pose_min_num_inliers)) {
+      LOG(INFO) << "[DEBUG] Image " << image_id << " has too few tri_points2D "<< tri_points2D.size();
     return false;
   }
 
@@ -496,11 +501,13 @@ bool IncrementalMapper::RegisterNextImage(const Options& options,
                             &camera,
                             &num_inliers,
                             &inlier_mask)) {
+      LOG(INFO) << "[DEBUG] Image " << image_id << " failed to EstimateAbsolutePose";
     return false;
   }
-
+// removing num_inliers check
   if (num_inliers < static_cast<size_t>(options.abs_pose_min_num_inliers)) {
-    return false;
+    LOG(INFO) << "[DEBUG] Image " << image_id << " has too few num_inliers: " << num_inliers;
+    // return false;
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -513,6 +520,7 @@ bool IncrementalMapper::RegisterNextImage(const Options& options,
                           tri_points3D,
                           &image.CamFromWorld(),
                           &camera)) {
+    LOG(INFO) << "[DEBUG] Image " << image_id << " failed to RefineAbsolutePose";
     return false;
   }
 
@@ -1271,6 +1279,7 @@ bool IncrementalMapper::EstimateInitialTwoViewGeometry(
 
   if (!EstimateTwoViewGeometryPose(
           camera1, points1, camera2, points2, &two_view_geometry)) {
+    LOG(INFO) << "[DEBUG] Image " << image_id1 << " and " << image_id2 << " bad EstimateTwoViewGeometryPose";
     return false;
   }
 
@@ -1281,6 +1290,9 @@ bool IncrementalMapper::EstimateInitialTwoViewGeometry(
       two_view_geometry.tri_angle > DegToRad(options.init_min_tri_angle)) {
     return true;
   }
+  // else{
+  //   LOG(INFO) << "[DEBUG] Image " << image_id1 << " and " << image_id2 << " failed to EstimateInitialTwoViewGeometry";
+  // }
 
   return false;
 }
