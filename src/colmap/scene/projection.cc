@@ -134,7 +134,8 @@ double CalculateNormalizedAngularError(
 
 bool HasPointPositiveDepth(const Eigen::Matrix3x4d& cam_from_world,
                            const Eigen::Vector3d& point3D) {
-  return true;
+  return cam_from_world.row(2).dot(point3D.homogeneous()) >=
+         std::numeric_limits<double>::epsilon();
 }
 
 }  // namespace colmap

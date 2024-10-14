@@ -68,9 +68,9 @@ void TriangulationEstimator::Estimate(const std::vector<X_t>& point_data,
                                      point_data[0].point_normalized,
                                      point_data[1].point_normalized);
 
-    if (HasPointPositiveDepth(pose_data[0].proj_matrix, xyz) &&
-        HasPointPositiveDepth(pose_data[1].proj_matrix, xyz) &&
-        CalculateTriangulationAngle(pose_data[0].proj_center,
+    //  (HasPointPositiveDepth(pose_data[0].proj_matrix, xyz) &&
+    //     HasPointPositiveDepth(pose_data[1].proj_matrix, xyz) &&
+      if (CalculateTriangulationAngle(pose_data[0].proj_center,
                                     pose_data[1].proj_center,
                                     xyz) >= min_tri_angle_) {
       models->resize(1);
