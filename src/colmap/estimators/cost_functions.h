@@ -66,7 +66,60 @@ class ReprojErrorCostFunction {
             new ReprojErrorCostFunction(point2D)));
   }
 
-  template <typename T>
+template <typename T>
+// bool operator()(const T* const cam_from_world_rotation,
+//                 const T* const cam_from_world_translation,
+//                 const T* const point3D,
+//                 const T* const camera_params,
+//                 T* residuals) const {
+//     // Transform the 3D point into the camera's coordinate system
+//     const Eigen::Matrix<T, 3, 1> point3D_in_cam =
+//         EigenQuaternionMap<T>(cam_from_world_rotation) *
+//         EigenVector3Map<T>(point3D) +
+//         EigenVector3Map<T>(cam_from_world_translation);
+
+//     // Project the 3D point into the image plane
+//     T predicted_coords[2];
+//     CameraModel::ImgFromCam(camera_params,
+//                             point3D_in_cam[0],
+//                             point3D_in_cam[1],
+//                             point3D_in_cam[2],
+//                             &predicted_coords[0], // x coordinate
+//                             &predicted_coords[1]); // y coordinate
+
+//     // Extract camera parameters
+//     const T c1 = camera_params[1];
+//     const T c2 = camera_params[2];
+
+//     // Constants
+//     const T pi = T(M_PI);
+//     const T two = T(2);
+
+//     // Compute spherical coordinates for predicted point
+//     const T theta = (predicted_coords[0] - c1) * pi / c1;
+//     const T phi = (predicted_coords[1] - c2) * pi / (two * c2);
+
+//     T u = ceres::cos(phi) * ceres::sin(theta);
+//     T v = ceres::sin(phi);
+//     T w = ceres::cos(phi) * ceres::cos(theta);
+
+//     // Compute spherical coordinates for observed point
+//     const T theta1 = (T(observed_x_) - c1) * pi / c1;
+//     const T phi1 = (T(observed_y_) - c2) * pi / (two * c2);
+
+//     T u1 = ceres::cos(phi1) * ceres::sin(theta1);
+//     T v1 = ceres::sin(phi1);
+//     T w1 = ceres::cos(phi1) * ceres::cos(theta1);
+
+//     // Compute residuals
+//     T m_dot_M = u*u1+ v*v1 + w*w1;
+//     residuals[0] = T(1)-  m_dot_M;
+//     residuals[1] = T(1)-  m_dot_M;
+//     // residuals[2] = T(4)*(T(1)-m_dot_M)/(T(1)+m_dot_M);
+
+//     return true;
+// }
+
   bool operator()(const T* const cam_from_world_rotation,
                   const T* const cam_from_world_translation,
                   const T* const point3D,

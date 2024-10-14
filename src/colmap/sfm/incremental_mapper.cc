@@ -154,6 +154,7 @@ bool IncrementalMapper::FindInitialImagePair(const Options& options,
                                              image_t& image_id2) {
   THROW_CHECK(options.Check());
 
+  
   std::vector<image_t> image_ids1;
   if (image_id1 != kInvalidImageId && image_id2 == kInvalidImageId) {
     // Only image_id1 provided.
@@ -238,12 +239,14 @@ std::vector<image_t> IncrementalMapper::FindNextImages(const Options& options) {
     // Only consider images with a sufficient number of visible points.
     if (obs_manager_->NumVisiblePoints3D(image.first) <
         static_cast<size_t>(options.abs_pose_min_num_inliers)) {
+          LOG(INFO) << "[DEBUG] next visible: " << obs_manager_->NumVisiblePoints3D(image.first) << " " << options.abs_pose_min_num_inliers;
       continue;
     }
 
     // Only try registration for a certain maximum number of times.
     const size_t num_reg_trials = num_reg_trials_[image.first];
     if (num_reg_trials >= static_cast<size_t>(options.max_reg_trials)) {
+      LOG(INFO) << "[DEBUG] max trials: " << num_reg_trials << " " << options.max_reg_trials;
       continue;
     }
 
@@ -1254,7 +1257,7 @@ bool IncrementalMapper::EstimateInitialTwoViewGeometry(
 
   const Image& image2 = database_cache_->Image(image_id2);
   const Camera& camera2 = database_cache_->Camera(image2.CameraId());
-
+  
   const FeatureMatches matches =
       database_cache_->CorrespondenceGraph()->FindCorrespondencesBetweenImages(
           image_id1, image_id2);
@@ -1263,6 +1266,8 @@ bool IncrementalMapper::EstimateInitialTwoViewGeometry(
   points1.reserve(image1.NumPoints2D());
   for (const auto& point : image1.Points2D()) {
     points1.push_back(point.xy);
+    // LOG(INFO) << "[DEBUG] " << point.xy;
+    
   }
 
   std::vector<Eigen::Vector2d> points2;
@@ -1282,12 +1287,15 @@ bool IncrementalMapper::EstimateInitialTwoViewGeometry(
     LOG(INFO) << "[DEBUG] Image " << image_id1 << " and " << image_id2 << " bad EstimateTwoViewGeometryPose";
     return false;
   }
-
+  LOG(INFO) << "[DEBUG] Image IdS" << image_id1 << " " <<image_id2;
+  LOG(INFO) << "[DEBUG] inliers:" << two_view_geometry.inlier_matches.size() << " " <<options.init_min_num_inliers;
+  LOG(INFO) << "[DEBUG] z:" << abs(two_view_geometry.cam2_from_cam1.translation.z()) << " " <<options.init_max_forward_motion;
+  LOG(INFO) << "[DEBUG] tri angle:" << two_view_geometry.tri_angle << " " << DegToRad(options.init_min_tri_angle);
   if (static_cast<int>(two_view_geometry.inlier_matches.size()) >=
           options.init_min_num_inliers &&
       std::abs(two_view_geometry.cam2_from_cam1.translation.z()) <
           options.init_max_forward_motion &&
-      two_view_geometry.tri_angle > DegToRad(options.init_min_tri_angle)) {
+      two_view_geometry.tri_angle > 0.6 * DegToRad(options.init_min_tri_angle)) {
     return true;
   }
   // else{

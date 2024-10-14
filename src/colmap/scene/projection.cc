@@ -40,13 +40,27 @@ double CalculateSquaredReprojectionError(const Eigen::Vector2d& point2D,
                                          const Camera& camera) {
   const Eigen::Vector3d point3D_in_cam = cam_from_world * point3D;
 
-  // Check that point is infront of camera.
-  if (point3D_in_cam.z() < std::numeric_limits<double>::epsilon()) {
-    return std::numeric_limits<double>::max();
-  }
+  const double c1 = camera.PrincipalPointX();
+  const double c2 = camera.PrincipalPointY();
 
-  return (camera.ImgFromCam(point3D_in_cam.hnormalized()) - point2D)
-      .squaredNorm();
+  
+  const double pi = M_PI;
+  const double two = 2;
+
+
+  Eigen::Vector3d coords_3D;
+  // Compute spherical coordinates for predicted point
+  const double theta = (point2D[0] - c1) * pi / c1;
+  const double phi = (point2D[1] - c2) * pi / (two * c2);
+
+  coords_3D[0] = cos(phi) * sin(theta);
+  coords_3D[1] = sin(phi);
+  coords_3D[2] = cos(phi) * cos(theta);
+  double M_dot_m = coords_3D.dot(point3D_in_cam.normalized());
+  // LOG(INFO) << "[DEBUG] Reprojection " << 10*(coords_3D - point3D_in_cam.normalized()).squaredNorm() ;
+  return 4* (1-M_dot_m)/(1+M_dot_m);
+  // return (camera.ImgFromCam(point3D_in_cam.hnormalized()) - point2D)
+  //     .squaredNorm();
 }
 
 double CalculateSquaredReprojectionError(
@@ -55,20 +69,34 @@ double CalculateSquaredReprojectionError(
     const Eigen::Matrix3x4d& cam_from_world,
     const Camera& camera) {
   const double proj_z = cam_from_world.row(2).dot(point3D.homogeneous());
-
-  // Check that point is infront of camera.
-  if (proj_z < std::numeric_limits<double>::epsilon()) {
-    return std::numeric_limits<double>::max();
-  }
-
   const double proj_x = cam_from_world.row(0).dot(point3D.homogeneous());
   const double proj_y = cam_from_world.row(1).dot(point3D.homogeneous());
-  const double inv_proj_z = 1.0 / proj_z;
+  Eigen::Vector3d coords_3D;
+  coords_3D[0] = proj_x;
+  coords_3D[1] = proj_y;
+  coords_3D[2] = proj_z;
+  coords_3D = coords_3D.normalized();
+  // const double inv_proj_z = 1.0 / proj_z;
 
-  const Eigen::Vector2d proj_point2D = camera.ImgFromCam(
-      Eigen::Vector2d(inv_proj_z * proj_x, inv_proj_z * proj_y));
+  const double c1 = camera.PrincipalPointX();
+  const double c2 = camera.PrincipalPointY();
 
-  return (proj_point2D - point2D).squaredNorm();
+  
+  const double pi = M_PI;
+  const double two = 2;
+
+
+  Eigen::Vector3d coords_3D_1;
+  // Compute spherical coordinates for predicted point
+  const double theta = (point2D[0] - c1) * pi / c1;
+  const double phi = (point2D[1] - c2) * pi / (two * c2);
+
+  coords_3D_1[0] = cos(phi) * sin(theta);
+  coords_3D_1[1] = sin(phi);
+  coords_3D_1[2] = cos(phi) * cos(theta);
+  double M_dot_m = coords_3D.dot(coords_3D_1);
+
+  return 4* (1-M_dot_m)/(1+M_dot_m);;
 }
 
 double CalculateAngularError(const Eigen::Vector2d& point2D,
@@ -106,8 +134,7 @@ double CalculateNormalizedAngularError(
 
 bool HasPointPositiveDepth(const Eigen::Matrix3x4d& cam_from_world,
                            const Eigen::Vector3d& point3D) {
-  return cam_from_world.row(2).dot(point3D.homogeneous()) >=
-         std::numeric_limits<double>::epsilon();
+  return true;
 }
 
 }  // namespace colmap

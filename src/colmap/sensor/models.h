@@ -1500,6 +1500,9 @@ void SphericalCameraModel::CamFromImg(
   *w = ceres::cos(phi)*ceres::cos(theta);
   // std::cout<<"[DEBUG] out u: "<<*u<<" v: "<<*v<<" w: "<<*w<<std::endl;
 }
+
+
+
 ////////////////////////////////////////////////////////////////////////////////
 // ThinPrismFisheyeCameraModel
 
