@@ -336,10 +336,10 @@ void IncrementalMapper::RegisterInitialImagePair(
         TriangulatePoint(cam_from_world1, cam_from_world2, point2D1, point2D2);
     const double tri_angle =
         CalculateTriangulationAngle(proj_center1, proj_center2, xyz);
-    if (tri_angle >= min_tri_angle_rad){
+    if ((tri_angle >= min_tri_angle_rad) && 
         // [TODO] Check if it's spherical equirectangle camera and use the negative depth too and disable negative depth check for general maybe we don't even need this check
-        // HasPointPositiveDepth(cam_from_world1, xyz) &&
-        // HasPointPositiveDepth(cam_from_world2, xyz)) {
+        HasPointPositiveDepth(cam_from_world1, xyz) &&
+        HasPointPositiveDepth(cam_from_world2, xyz)) {
       track.Element(0).point2D_idx = corr.point2D_idx1;
       track.Element(1).point2D_idx = corr.point2D_idx2;
       obs_manager_->AddPoint3D(xyz, track);
