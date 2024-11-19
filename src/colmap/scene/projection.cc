@@ -58,8 +58,8 @@ double CalculateSquaredReprojectionError(const Eigen::Vector2d& point2D,
   coords_3D[2] = cos(phi) * cos(theta);
   double M_dot_m = coords_3D.dot(point3D_in_cam.normalized());
   // LOG(INFO) << "[DEBUG] Reprojection " << 10*(coords_3D - point3D_in_cam.normalized()).squaredNorm() ;
-  return 4* (1-M_dot_m)/(1+M_dot_m);
-  // return (camera.ImgFromCam(point3D_in_cam.hnormalized()) - point2D)
+  // return 4* (1-M_dot_m)/(1+M_dot_m);
+  return (100*(coords_3D - point3D_in_cam.normalized()).squaredNorm());
   //     .squaredNorm();
 }
 
@@ -96,7 +96,7 @@ double CalculateSquaredReprojectionError(
   coords_3D_1[2] = cos(phi) * cos(theta);
   double M_dot_m = coords_3D.dot(coords_3D_1);
 
-  return 4* (1-M_dot_m)/(1+M_dot_m);;
+  return (100*(coords_3D - coords_3D_1).squaredNorm());
 }
 
 double CalculateAngularError(const Eigen::Vector2d& point2D,
@@ -133,36 +133,23 @@ double CalculateNormalizedAngularError(
 }
 
 bool HasPointPositiveDepth(const Eigen::Matrix3x4d& cam_from_world,
-                           const Eigen::Vector3d& point3D) {
-  // return cam_from_world.row(2).dot(point3D.homogeneous()) >=
-  //        std::numeric_limits<double>::epsilon();}
+                          const Eigen::Vector3d& point3D,
+                          const double median_depth,
+                          const double max_depth_ratio) {
+    // Eigen::Matrix4d cam_from_world_4x4 = Eigen::Matrix4d::Identity();
+    // cam_from_world_4x4.block<3,4>(0,0) = cam_from_world;
+    // Eigen::Vector4d point_cam = cam_from_world_4x4 * point3D.homogeneous();
+    
+    // double distance = point_cam.head<3>().norm();
+    
+    // // Check minimum depth
+    // if (distance < std::numeric_limits<double>::epsilon()) {
+    //     return false;
+    // }
 
-    Eigen::Matrix4d cam_from_world_4x4 = Eigen::Matrix4d::Identity(); // Start with identity matrix
-    cam_from_world_4x4.block<3, 4>(0, 0) = cam_from_world;            // Copy 3x4 into the top-left of the 4x4 matrix
-
-    // Step 2: Convert the 3D point into homogeneous coordinates (4x1 vector)
-    Eigen::Vector4d point_homogeneous = point3D.homogeneous();
-
-    // Step 3: Multiply the 4x4 camera transformation matrix by the homogeneous 4x1 point
-    Eigen::Vector4d point_cam = cam_from_world_4x4 * point_homogeneous;
-
-    // Step 4: Compute the Euclidean distance (norm) of the 3D coordinates from the camera
-    double distance = point_cam.head<3>().norm();  // This is the Euclidean distance in 3D space
-
-    // Avoid division by zero (point very close or at the camera origin)
-    if (distance < std::numeric_limits<double>::epsilon()) {
-        return false;  // Invalid point because it's too close
-    }
-
-    // Step 5: Compute inverse depth
-    double inverse_depth = 1.0 / distance;
-
-    // Step 6: Set threshold values for valid inverse depth (avoid too far or too close points)
-    const double min_inverse_depth = 1e-3;  // Minimum inverse depth (too far away)
-    const double max_inverse_depth = 1e3;   // Maximum inverse depth (too close)
-
-    // Step 7: Return true if the point has valid inverse depth within the defined range
-    return (inverse_depth > min_inverse_depth && inverse_depth < max_inverse_depth);
+    // // Use median depth as reference
+    // return distance < median_depth * max_depth_ratio;
+    return true;
 }
 
 }  // namespace colmap

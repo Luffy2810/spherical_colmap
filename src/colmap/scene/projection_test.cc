@@ -153,21 +153,23 @@ TEST(HasPointPositiveDepth, Nominal) {
   const Eigen::Matrix3x4d cam_from_world_mat = cam_from_world.ToMatrix();
 
   // In the image plane
+  Eigen::Vector3d baseline;
+
   const bool check1 =
-      HasPointPositiveDepth(cam_from_world_mat, Eigen::Vector3d(0, 0, 0));
+      HasPointPositiveDepth(cam_from_world_mat, Eigen::Vector3d(0, 0, 0),100);
   EXPECT_FALSE(check1);
   const bool check2 =
-      HasPointPositiveDepth(cam_from_world_mat, Eigen::Vector3d(0, 2, 0));
+      HasPointPositiveDepth(cam_from_world_mat, Eigen::Vector3d(0, 2, 0),100);
   EXPECT_FALSE(check2);
 
   // Infront of camera
   const bool check3 =
-      HasPointPositiveDepth(cam_from_world_mat, Eigen::Vector3d(0, 0, 1));
+      HasPointPositiveDepth(cam_from_world_mat, Eigen::Vector3d(0, 0, 1),100);
   EXPECT_TRUE(check3);
 
   // Behind camera
   const bool check4 =
-      HasPointPositiveDepth(cam_from_world_mat, Eigen::Vector3d(0, 0, -1));
+      HasPointPositiveDepth(cam_from_world_mat, Eigen::Vector3d(0, 0, -1),100);
   EXPECT_FALSE(check4);
 }
 

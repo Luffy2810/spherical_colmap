@@ -165,9 +165,10 @@ void GenerateReconstruction(const size_t num_images,
         image.CamFromWorld().ToMatrix();
 
     std::vector<Eigen::Vector2d> points2D;
+    Eigen::Vector3d baseline;
     for (const auto& point3D : reconstruction->Points3D()) {
       EXPECT_TRUE(
-          HasPointPositiveDepth(cam_from_world_matrix, point3D.second.xyz));
+          HasPointPositiveDepth(cam_from_world_matrix, point3D.second.xyz,100.0));
       // Get exact projection of 3D point.
       Eigen::Vector2d point2D = camera.ImgFromCam(
           (image.CamFromWorld() * point3D.second.xyz).hnormalized());

@@ -52,8 +52,8 @@ void TriangulationEstimator::SetResidualType(const ResidualType residual_type) {
 }
 
 void TriangulationEstimator::Estimate(const std::vector<X_t>& point_data,
-                                      const std::vector<Y_t>& pose_data,
-                                      std::vector<M_t>* models) const {
+                                     const std::vector<Y_t>& pose_data,
+                                     std::vector<M_t>* models) const {
   THROW_CHECK_GE(point_data.size(), 2);
   THROW_CHECK_EQ(point_data.size(), pose_data.size());
   THROW_CHECK(models != nullptr);
@@ -61,25 +61,36 @@ void TriangulationEstimator::Estimate(const std::vector<X_t>& point_data,
   models->clear();
 
   if (point_data.size() == 2) {
-    // Two-view triangulation.
-
+    // Two-view triangulation
     const M_t xyz = TriangulatePoint(pose_data[0].proj_matrix,
-                                     pose_data[1].proj_matrix,
-                                     point_data[0].point_normalized,
-                                     point_data[1].point_normalized);
+                                    pose_data[1].proj_matrix,
+                                    point_data[0].point_normalized,
+                                    point_data[1].point_normalized);
 
-    //  (HasPointPositiveDepth(pose_data[0].proj_matrix, xyz) &&
-    //     HasPointPositiveDepth(pose_data[1].proj_matrix, xyz) &&
-      if (CalculateTriangulationAngle(pose_data[0].proj_center,
-                                    pose_data[1].proj_center,
-                                    xyz) >= min_tri_angle_) {
+    // Calculate depths for initial point
+    Eigen::Matrix4d cam_from_world1_4x4 = Eigen::Matrix4d::Identity();
+    Eigen::Matrix4d cam_from_world2_4x4 = Eigen::Matrix4d::Identity();
+    cam_from_world1_4x4.block<3,4>(0,0) = pose_data[0].proj_matrix;
+    cam_from_world2_4x4.block<3,4>(0,0) = pose_data[1].proj_matrix;
+
+    Eigen::Vector4d point_cam1 = cam_from_world1_4x4 * xyz.homogeneous();
+    Eigen::Vector4d point_cam2 = cam_from_world2_4x4 * xyz.homogeneous();
+    
+    double depth1 = point_cam1.head<3>().norm();
+    double depth2 = point_cam2.head<3>().norm();
+    double median_depth = (depth1 + depth2) / 2.0;  // For two views, use average
+
+    if (HasPointPositiveDepth(pose_data[0].proj_matrix, xyz, median_depth) && 
+        HasPointPositiveDepth(pose_data[1].proj_matrix, xyz, median_depth) &&
+        CalculateTriangulationAngle(pose_data[0].proj_center,
+                                  pose_data[1].proj_center,
+                                  xyz) >= min_tri_angle_) {
       models->resize(1);
       (*models)[0] = xyz;
       return;
     }
   } else {
-    // Multi-view triangulation.
-
+    // Multi-view triangulation
     std::vector<Eigen::Matrix3x4d> proj_matrices;
     proj_matrices.reserve(point_data.size());
     std::vector<Eigen::Vector2d> points;
@@ -91,28 +102,46 @@ void TriangulationEstimator::Estimate(const std::vector<X_t>& point_data,
 
     const M_t xyz = TriangulateMultiViewPoint(proj_matrices, points);
 
-    // Check for cheirality constraint.
+    // Calculate depths from all views
+    std::vector<double> depths;
+    depths.reserve(pose_data.size());
+
     for (const auto& pose : pose_data) {
-      if (!HasPointPositiveDepth(pose.proj_matrix, xyz)) {
-        return;
+      Eigen::Matrix4d cam_from_world_4x4 = Eigen::Matrix4d::Identity();
+      cam_from_world_4x4.block<3,4>(0,0) = pose.proj_matrix;
+      Eigen::Vector4d point_cam = cam_from_world_4x4 * xyz.homogeneous();
+      depths.push_back(point_cam.head<3>().norm());
+    }
+
+    // Calculate median depth
+    std::nth_element(depths.begin(), depths.begin() + depths.size()/2, depths.end());
+    double median_depth = depths[depths.size()/2];
+
+    // Check depth constraints
+    bool has_valid_depth = true;
+    for (const auto& pose : pose_data) {
+      if (!HasPointPositiveDepth(pose.proj_matrix, xyz, median_depth)) {
+        has_valid_depth = false;
+        break;
       }
     }
 
-    // Check for sufficient triangulation angle.
-    for (size_t i = 0; i < pose_data.size(); ++i) {
-      for (size_t j = 0; j < i; ++j) {
-        const double tri_angle = CalculateTriangulationAngle(
-            pose_data[i].proj_center, pose_data[j].proj_center, xyz);
-        if (tri_angle >= min_tri_angle_) {
-          models->resize(1);
-          (*models)[0] = xyz;
-          return;
+    if (has_valid_depth) {
+      // Check for sufficient triangulation angle
+      for (size_t i = 0; i < pose_data.size(); ++i) {
+        for (size_t j = 0; j < i; ++j) {
+          const double tri_angle = CalculateTriangulationAngle(
+              pose_data[i].proj_center, pose_data[j].proj_center, xyz);
+          if (tri_angle >= min_tri_angle_) {
+            models->resize(1);
+            (*models)[0] = xyz;
+            return;
+          }
         }
       }
     }
   }
 }
-
 void TriangulationEstimator::Residuals(const std::vector<X_t>& point_data,
                                        const std::vector<Y_t>& pose_data,
                                        const M_t& xyz,

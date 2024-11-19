@@ -88,6 +88,7 @@ double CalculateNormalizedAngularError(const Eigen::Vector2d& point2D,
 //
 // @return                True if point lies in front of camera.
 bool HasPointPositiveDepth(const Eigen::Matrix3x4d& cam_from_world,
-                           const Eigen::Vector3d& point3D);
-
+                          const Eigen::Vector3d& point3D,
+                          const double median_depth,
+                          const double max_depth_ratio = 5.0);
 }  // namespace colmap
