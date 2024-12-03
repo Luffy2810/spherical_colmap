@@ -58,8 +58,8 @@ double CalculateSquaredReprojectionError(const Eigen::Vector2d& point2D,
   coords_3D[2] = cos(phi) * cos(theta);
   double M_dot_m = coords_3D.dot(point3D_in_cam.normalized());
   // LOG(INFO) << "[DEBUG] Reprojection " << 10*(coords_3D - point3D_in_cam.normalized()).squaredNorm() ;
-  // return 4* (1-M_dot_m)/(1+M_dot_m);
-  return (100*(coords_3D - point3D_in_cam.normalized()).squaredNorm());
+  return 4* (1-M_dot_m)/(1+M_dot_m);
+  // return (100*(coords_3D - point3D_in_cam.normalized()).squaredNorm());
   //     .squaredNorm();
 }
 
@@ -95,8 +95,9 @@ double CalculateSquaredReprojectionError(
   coords_3D_1[1] = sin(phi);
   coords_3D_1[2] = cos(phi) * cos(theta);
   double M_dot_m = coords_3D.dot(coords_3D_1);
-
-  return (100*(coords_3D - coords_3D_1).squaredNorm());
+  return 4* (1-M_dot_m)/(1+M_dot_m);
+  
+  // return (100*(coords_3D - coords_3D_1).squaredNorm());
 }
 
 double CalculateAngularError(const Eigen::Vector2d& point2D,

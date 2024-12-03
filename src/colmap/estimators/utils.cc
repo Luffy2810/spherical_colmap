@@ -88,6 +88,54 @@ void ComputeSquaredSampsonError(const std::vector<Eigen::Vector2d>& points1,
   }
 }
 
+// void ComputeSquaredReprojectionError(
+//     const std::vector<Eigen::Vector2d>& points2D,
+//     const std::vector<Eigen::Vector3d>& points3D,
+//     const Eigen::Matrix3x4d& cam_from_world,
+//     std::vector<double>* residuals) {
+//   const size_t num_points2D = points2D.size();
+//   THROW_CHECK_EQ(num_points2D, points3D.size());
+//   residuals->resize(num_points2D);
+//   for (size_t i = 0; i < num_points2D; ++i) {
+//   const double proj_z = cam_from_world.row(2).dot(points3D[i].homogeneous());
+//   const double proj_x = cam_from_world.row(0).dot(points3D[i].homogeneous());
+//   const double proj_y = cam_from_world.row(1).dot(points3D[i].homogeneous());
+//   Eigen::Vector3d coords_3D;
+//   coords_3D[0] = proj_x;
+//   coords_3D[1] = proj_y;
+//   coords_3D[2] = proj_z;
+//   coords_3D = coords_3D.normalized();
+//   // const double inv_proj_z = 1.0 / proj_z;
+
+//   const double c1 = 768;
+//   const double c2 = 384;
+
+  
+//   const double pi = M_PI;
+//   const double two = 2;
+
+
+//   Eigen::Vector3d coords_3D_1;
+//   // Compute spherical coordinates for predicted point
+//   const double theta = (points2D[i][0] - c1) * pi / c1;
+//   const double phi = (points2D[i][1] - c2) * pi / (two * c2);
+
+//   coords_3D_1[0] = cos(phi) * sin(theta);
+//   coords_3D_1[1] = sin(phi);
+//   coords_3D_1[2] = cos(phi) * cos(theta);
+//   // double M_dot_m = coords_3D.dot(coords_3D_1);
+//   // (*residuals)[i] =  10*(1 - M_dot_m) ;
+//   // LOG(INFO) << "[DEBUG] Reprojection Error " << (*residuals)[i];
+//   (*residuals)[i] =  (coords_3D - coords_3D_1).squaredNorm() ;
+//   // LOG(INFO) << "[DEBUG] Reprojection Error " << (*residuals)[i];
+//   // return (100*(coords_3D - coords_3D_1).squaredNorm());
+// }
+
+// }
+
+
+
+
 void ComputeSquaredReprojectionError(
     const std::vector<Eigen::Vector2d>& points2D,
     const std::vector<Eigen::Vector3d>& points3D,
@@ -100,12 +148,13 @@ void ComputeSquaredReprojectionError(
     const Eigen::Vector3d point3D_in_cam =
         cam_from_world * points3D[i].homogeneous();
     // Check if 3D point is in front of camera.
-    if (point3D_in_cam.z() > std::numeric_limits<double>::epsilon()) {
+    // if (point3D_in_cam.z() > std::numeric_limits<double>::epsilon()) {
       (*residuals)[i] =
           (point3D_in_cam.hnormalized() - points2D[i]).squaredNorm();
-    } else {
-      (*residuals)[i] = std::numeric_limits<double>::max();
-    }
+    //       // LOG(INFO) << "[DEBUG] Reprojection Error " << (*residuals)[i];
+    // } else {
+      // (*residuals)[i] = std::numeric_limits<double>::max();
+    // }
   }
 }
 
