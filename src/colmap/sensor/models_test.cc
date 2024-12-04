@@ -281,5 +281,8 @@ TEST(RadTanThinPrismFisheye, Nominal) {
   TestModel<RadTanThinPrismFisheyeModel>(params);
 }
 
+  TEST(SphericalCameraModel, Nominal) {
+    TestModel<SphericalCameraModel>({343.77467707849388, 2160.0, 1080.0});
+  }
 }  // namespace
 }  // namespace colmap

@@ -69,8 +69,8 @@ void TriangulationEstimator::Estimate(const std::vector<X_t>& point_data,
                          point_data[0].point_normalized,
                          point_data[1].point_normalized,
                          &xyz) &&
-        HasPointPositiveDepth(pose_data[0].cam_from_world, xyz) &&
-        HasPointPositiveDepth(pose_data[1].cam_from_world, xyz) &&
+        // HasPointPositiveDepth(pose_data[0].cam_from_world, xyz) &&
+        // HasPointPositiveDepth(pose_data[1].cam_from_world, xyz) &&
         CalculateTriangulationAngle(pose_data[0].proj_center,
                                     pose_data[1].proj_center,
                                     xyz) >= min_tri_angle_) {
@@ -97,9 +97,9 @@ void TriangulationEstimator::Estimate(const std::vector<X_t>& point_data,
 
     // Check for cheirality constraint.
     for (const auto& pose : pose_data) {
-      if (!HasPointPositiveDepth(pose.cam_from_world, xyz)) {
-        return;
-      }
+      // if (!HasPointPositiveDepth(pose.cam_from_world, xyz)) {
+      //   return;
+      // }
     }
 
     // Check for sufficient triangulation angle.

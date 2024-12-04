@@ -210,6 +210,7 @@ Camera ReadCameraRow(sqlite3_stmt* sql_stmt) {
   camera.width = static_cast<size_t>(sqlite3_column_int64(sql_stmt, 2));
   camera.height = static_cast<size_t>(sqlite3_column_int64(sql_stmt, 3));
 
+    LOG(INFO) << "[DEBUG] camera model ID "<<(int)camera.model_id << " Width "<<camera.width << " Height "<<camera.height << " Camera ID "<<camera.camera_id;
   const size_t num_params_bytes =
       static_cast<size_t>(sqlite3_column_bytes(sql_stmt, 4));
   const size_t num_params = num_params_bytes / sizeof(double);

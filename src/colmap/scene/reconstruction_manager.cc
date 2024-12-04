@@ -45,6 +45,7 @@ std::shared_ptr<Reconstruction>& ReconstructionManager::Get(const size_t idx) {
 }
 
 size_t ReconstructionManager::Add() {
+  LOG(INFO) << "[DEBUG] Reading reconstruction from " << path;
   const size_t idx = Size();
   reconstructions_.push_back(std::make_shared<Reconstruction>());
   return idx;

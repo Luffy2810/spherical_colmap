@@ -193,6 +193,7 @@ bool IncrementalMapper::FindInitialImagePair(const Options& options,
 
       if (EstimateInitialTwoViewGeometry(
               options, two_view_geometry, image_id1, image_id2)) {
+              LOG(INFO) << "[DEBUG] Initial pair: " << image_id1 << " and " << image_id2;
         return true;
       }
     }
@@ -236,12 +237,14 @@ std::vector<image_t> IncrementalMapper::FindNextImages(const Options& options) {
     // Only consider images with a sufficient number of visible points.
     if (obs_manager_->NumVisiblePoints3D(image.first) <
         static_cast<size_t>(options.abs_pose_min_num_inliers)) {
+          LOG(INFO) << "[DEBUG] next visible: " << obs_manager_->NumVisiblePoints3D(image.first) << " " << options.abs_pose_min_num_inliers;
       continue;
     }
 
     // Only try registration for a certain maximum number of times.
     const size_t num_reg_trials = num_reg_trials_[image.first];
     if (num_reg_trials >= static_cast<size_t>(options.max_reg_trials)) {
+      LOG(INFO) << "[DEBUG] max trials: " << num_reg_trials << " " << options.max_reg_trials;
       continue;
     }
 
@@ -314,7 +317,7 @@ void IncrementalMapper::RegisterInitialImagePair(
           image_id1, image_id2);
 
   const double min_tri_angle_rad = DegToRad(options.init_min_tri_angle);
-
+  LOG(INFO) << "[DEBUG] Number of matched features: " << corrs.size();
   // Add 3D point tracks.
   Track track;
   track.Reserve(2);
@@ -331,14 +334,17 @@ void IncrementalMapper::RegisterInitialImagePair(
     if (TriangulatePoint(
             cam_from_world1, cam_from_world2, point2D1, point2D2, &xyz) &&
         CalculateTriangulationAngle(proj_center1, proj_center2, xyz) >=
-            min_tri_angle_rad &&
-        HasPointPositiveDepth(cam_from_world1, xyz) &&
-        HasPointPositiveDepth(cam_from_world2, xyz)) {
+            min_tri_angle_rad)
+            // &&
+        // HasPointPositiveDepth(cam_from_world1, xyz) &&
+        // HasPointPositiveDepth(cam_from_world2, xyz)) 
+        {
       track.Element(0).point2D_idx = corr.point2D_idx1;
       track.Element(1).point2D_idx = corr.point2D_idx2;
       obs_manager_->AddPoint3D(xyz, track);
     }
   }
+  LOG(INFO) << "[DEBUG] Number of 3D points registered: " << reconstruction_->NumPoints3D();
 }
 
 bool IncrementalMapper::RegisterNextImage(const Options& options,
@@ -359,6 +365,7 @@ bool IncrementalMapper::RegisterNextImage(const Options& options,
   // Check if enough 2D-3D correspondences.
   if (obs_manager_->NumVisiblePoints3D(image_id) <
       static_cast<size_t>(options.abs_pose_min_num_inliers)) {
+      LOG(INFO) << "[DEBUG] Image " << image_id << " has too few NumVisiblePoints3D";
     return false;
   }
 
@@ -421,6 +428,7 @@ bool IncrementalMapper::RegisterNextImage(const Options& options,
   // hence we skip some of the 2D-3D correspondences.
   if (tri_points2D.size() <
       static_cast<size_t>(options.abs_pose_min_num_inliers)) {
+        LOG(INFO) << "[DEBUG] Image " << image_id << " has too few tri_points2D "<< tri_points2D.size();
     return false;
   }
 
@@ -485,6 +493,7 @@ bool IncrementalMapper::RegisterNextImage(const Options& options,
                             &camera,
                             &num_inliers,
                             &inlier_mask)) {
+    LOG(INFO) << "[DEBUG] Image " << image_id << " failed to EstimateAbsolutePose";
     return false;
   }
 
@@ -502,6 +511,7 @@ bool IncrementalMapper::RegisterNextImage(const Options& options,
                           tri_points3D,
                           &cam_from_world,
                           &camera)) {
+    LOG(INFO) << "[DEBUG] Image " << image_id << " failed to RefineAbsolutePose";
     return false;
   }
 
@@ -1285,9 +1295,15 @@ bool IncrementalMapper::EstimateInitialTwoViewGeometry(
 
   if (!EstimateTwoViewGeometryPose(
           camera1, points1, camera2, points2, &two_view_geometry)) {
+    LOG(INFO) << "[DEBUG] Image " << image_id1 << " and " << image_id2 << " bad EstimateTwoViewGeometryPose"; 
     return false;
   }
 
+  LOG(INFO) << "[DEBUG] Image IdS" << image_id1 << " " <<image_id2;
+  LOG(INFO) << "[DEBUG] inliers:" << two_view_geometry.inlier_matches.size() << " " <<options.init_min_num_inliers;
+  LOG(INFO) << "[DEBUG] z:" << abs(two_view_geometry.cam2_from_cam1.translation.z()) << " " <<options.init_max_forward_motion;
+  LOG(INFO) << "[DEBUG] tri angle:" << two_view_geometry.tri_angle << " " << DegToRad(options.init_min_tri_angle);
+  
   if (static_cast<int>(two_view_geometry.inlier_matches.size()) >=
           options.init_min_num_inliers &&
       std::abs(two_view_geometry.cam2_from_cam1.translation.z()) <
