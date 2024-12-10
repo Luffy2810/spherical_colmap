@@ -266,6 +266,80 @@ double CalculateDepth(const Eigen::Matrix3x4d& cam_from_world,
 //     return !points3D->empty();
 // }
 
+// bool CheckCheirality(const Eigen::Matrix3d& R,
+//                      const Eigen::Vector3d& t,
+//                      const std::vector<Eigen::Vector2d>& points1,
+//                      const std::vector<Eigen::Vector2d>& points2,
+//                      std::vector<Eigen::Vector3d>* points3D) {
+//     THROW_CHECK_EQ(points1.size(), points2.size());
+    
+//     // Camera projection matrices
+//     const Eigen::Matrix3x4d proj_matrix1 = Eigen::Matrix3x4d::Identity();
+//     Eigen::Matrix3x4d proj_matrix2;
+//     proj_matrix2.leftCols<3>() = R;
+//     proj_matrix2.col(3) = t;
+
+//     // Camera parameters
+//     constexpr int c1 = 784;  // horizontal
+//     constexpr int c2 = 392;  // vertical
+//     constexpr double pi = M_PI;
+//     constexpr double inv_c1 = pi / c1;
+//     constexpr double inv_c2 = pi / (2.0 * c2);
+//     constexpr double angle_threshold = 0.90;
+
+//     size_t n_points = points1.size();
+//     points3D->clear();
+//     points3D->reserve(n_points);
+
+//     // Precompute direction vectors in parallel
+//     std::vector<Eigen::Vector3d> directions1(n_points), directions2(n_points);
+// #pragma omp parallel for
+//     for (size_t i = 0; i < n_points; ++i) {
+//         double theta1 = (points1[i][0] - c1) * inv_c1;
+//         double phi1 = (points1[i][1] - c2) * inv_c2;
+//         directions1[i] << std::cos(phi1) * std::sin(theta1),
+//                           std::sin(phi1),
+//                           std::cos(phi1) * std::cos(theta1);
+
+//         double theta2 = (points2[i][0] - c1) * inv_c1;
+//         double phi2 = (points2[i][1] - c2) * inv_c2;
+//         directions2[i] << std::cos(phi2) * std::sin(theta2),
+//                           std::sin(phi2),
+//                           std::cos(phi2) * std::cos(theta2);
+//     }
+
+//     // Check chirality in parallel
+// #pragma omp parallel
+//     {
+//         std::vector<Eigen::Vector3d> local_points3D;
+//         local_points3D.reserve(n_points);
+
+// #pragma omp for nowait
+//         for (size_t i = 0; i < n_points; ++i) {
+//             const Eigen::Vector3d point3D = 
+//                 TriangulatePoint(proj_matrix1, proj_matrix2, points1[i], points2[i]);
+
+//             // Transform point to camera coordinates
+//             Eigen::Vector3d point3D_cam1 = point3D;
+//             Eigen::Vector3d point3D_cam2 = R * point3D + t;
+
+//             // Normalize and compute dot product
+//             double cos_error1 = directions1[i].dot(point3D_cam1.normalized());
+//             double cos_error2 = directions2[i].dot(point3D_cam2.normalized());
+
+//             if (cos_error1 > angle_threshold && cos_error2 > angle_threshold) {
+//                 local_points3D.push_back(point3D);
+//             }
+//         }
+
+// #pragma omp critical
+//         points3D->insert(points3D->end(), local_points3D.begin(), local_points3D.end());
+//     }
+
+//     return !points3D->empty();
+// }
+
+
 bool CheckCheirality(const Eigen::Matrix3d& R,
                      const Eigen::Vector3d& t,
                      const std::vector<Eigen::Vector2d>& points1,
@@ -280,12 +354,12 @@ bool CheckCheirality(const Eigen::Matrix3d& R,
     proj_matrix2.col(3) = t;
 
     // Camera parameters
-    constexpr int c1 = 784;  // horizontal
-    constexpr int c2 = 392;  // vertical
+    constexpr int c1 = 3920;  // horizontal
+    constexpr int c2 = 1960;  // vertical
     constexpr double pi = M_PI;
     constexpr double inv_c1 = pi / c1;
     constexpr double inv_c2 = pi / (2.0 * c2);
-    constexpr double angle_threshold = 0.90;
+    constexpr double angle_threshold = 0.95;
 
     size_t n_points = points1.size();
     points3D->clear();

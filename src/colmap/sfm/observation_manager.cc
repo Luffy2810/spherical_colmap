@@ -323,61 +323,61 @@ size_t ObservationManager::FilterAllPoints3D(const double max_reproj_error,
 size_t ObservationManager::FilterObservationsWithNegativeDepth() {
     size_t num_filtered = 0;
     
-    // Calculate median depth of all points for each image
-    std::unordered_map<image_t, double> image_median_depths;
+    // // Calculate median depth of all points for each image
+    // std::unordered_map<image_t, double> image_median_depths;
     
-    for (const auto image_id : reconstruction_.RegImageIds()) {
-        const Image& image = reconstruction_.Image(image_id);
-        const Camera& camera = reconstruction_.Camera(image.CameraId());
+    // for (const auto image_id : reconstruction_.RegImageIds()) {
+    //     const Image& image = reconstruction_.Image(image_id);
+    //     const Camera& camera = reconstruction_.Camera(image.CameraId());
         
-            std::vector<double> depths;
-            depths.reserve(image.NumPoints3D());
+    //         std::vector<double> depths;
+    //         depths.reserve(image.NumPoints3D());
             
-            const Eigen::Matrix3x4d cam_from_world = image.CamFromWorld().ToMatrix();
-            Eigen::Matrix4d cam_from_world_4x4 = Eigen::Matrix4d::Identity();
-            cam_from_world_4x4.block<3,4>(0,0) = cam_from_world;
+    //         const Eigen::Matrix3x4d cam_from_world = image.CamFromWorld().ToMatrix();
+    //         Eigen::Matrix4d cam_from_world_4x4 = Eigen::Matrix4d::Identity();
+    //         cam_from_world_4x4.block<3,4>(0,0) = cam_from_world;
 
-            // Collect depths of all 3D points seen by this image
-            for (point2D_t point2D_idx = 0; point2D_idx < image.NumPoints2D(); ++point2D_idx) {
-                const Point2D& point2D = image.Point2D(point2D_idx);
-                if (point2D.HasPoint3D()) {
-                    const Point3D& point3D = reconstruction_.Point3D(point2D.point3D_id);
-                    Eigen::Vector4d point_cam = cam_from_world_4x4 * point3D.xyz.homogeneous();
-                    depths.push_back(point_cam.head<3>().norm());
-                }
-            }
+    //         // Collect depths of all 3D points seen by this image
+    //         for (point2D_t point2D_idx = 0; point2D_idx < image.NumPoints2D(); ++point2D_idx) {
+    //             const Point2D& point2D = image.Point2D(point2D_idx);
+    //             if (point2D.HasPoint3D()) {
+    //                 const Point3D& point3D = reconstruction_.Point3D(point2D.point3D_id);
+    //                 Eigen::Vector4d point_cam = cam_from_world_4x4 * point3D.xyz.homogeneous();
+    //                 depths.push_back(point_cam.head<3>().norm());
+    //             }
+    //         }
 
-            if (!depths.empty()) {
-                std::nth_element(depths.begin(), depths.begin() + depths.size()/2, depths.end());
-                image_median_depths[image_id] = depths[depths.size()/2];
-            }
+    //         if (!depths.empty()) {
+    //             std::nth_element(depths.begin(), depths.begin() + depths.size()/2, depths.end());
+    //             image_median_depths[image_id] = depths[depths.size()/2];
+    //         }
         
-    }
+    // }
 
-    // Filter observations
-    for (const auto image_id : reconstruction_.RegImageIds()) {
-        const Image& image = reconstruction_.Image(image_id);
-        const Camera& camera = reconstruction_.Camera(image.CameraId());
-        const Eigen::Matrix3x4d cam_from_world = image.CamFromWorld().ToMatrix();
+    // // Filter observations
+    // for (const auto image_id : reconstruction_.RegImageIds()) {
+    //     const Image& image = reconstruction_.Image(image_id);
+    //     const Camera& camera = reconstruction_.Camera(image.CameraId());
+    //     const Eigen::Matrix3x4d cam_from_world = image.CamFromWorld().ToMatrix();
 
-        for (point2D_t point2D_idx = 0; point2D_idx < image.NumPoints2D(); ++point2D_idx) {
-            const Point2D& point2D = image.Point2D(point2D_idx);
-            if (point2D.HasPoint3D()) {
-                const Point3D& point3D = reconstruction_.Point3D(point2D.point3D_id);
+    //     for (point2D_t point2D_idx = 0; point2D_idx < image.NumPoints2D(); ++point2D_idx) {
+    //         const Point2D& point2D = image.Point2D(point2D_idx);
+    //         if (point2D.HasPoint3D()) {
+    //             const Point3D& point3D = reconstruction_.Point3D(point2D.point3D_id);
                 
-                bool should_filter = false;
+    //             bool should_filter = false;
 
-                    const double median_depth = image_median_depths[image_id];
-                    should_filter = !HasPointPositiveDepth(cam_from_world, point3D.xyz, median_depth);
+    //                 const double median_depth = image_median_depths[image_id];
+    //                 should_filter = !HasPointPositiveDepth(cam_from_world, point3D.xyz, median_depth);
   
 
-                if (should_filter) {
-                    DeleteObservation(image_id, point2D_idx);
-                    num_filtered += 1;
-                }
-            }
-        }
-    }
+    //             if (should_filter) {
+    //                 DeleteObservation(image_id, point2D_idx);
+    //                 num_filtered += 1;
+    //             }
+    //         }
+    //     }
+    // }
     return num_filtered;
 }
 size_t ObservationManager::FilterPoints3DWithSmallTriangulationAngle(

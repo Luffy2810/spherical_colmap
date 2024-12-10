@@ -309,7 +309,7 @@ void IncrementalMapper::RegisterInitialImagePair(
   // Update Reconstruction
   //////////////////////////////////////////////////////////////////////////////
 
-  reconstruction_->RegisterImage(image_id1);
+    reconstruction_->RegisterImage(image_id1);
   reconstruction_->RegisterImage(image_id2);
   RegisterImageEvent(image_id1);
   RegisterImageEvent(image_id2);
@@ -320,69 +320,31 @@ void IncrementalMapper::RegisterInitialImagePair(
 
   const double min_tri_angle_rad = DegToRad(options.init_min_tri_angle);
   LOG(INFO) << "[DEBUG] Number of matched features: " << corrs.size();
-
-  // First triangulate all points and collect depths
-  std::vector<double> depths;
-  std::vector<std::pair<Eigen::Vector3d, std::pair<point2D_t, point2D_t>>> valid_points;
-  depths.reserve(corrs.size() * 2); // For depths from both cameras
-  valid_points.reserve(corrs.size());
-
-  for (const auto& corr : corrs) {
-    const Eigen::Vector2d point2D1 =
-        camera1.CamFromImg(image1.Point2D(corr.point2D_idx1).xy);
-    const Eigen::Vector2d point2D2 =
-        camera2.CamFromImg(image2.Point2D(corr.point2D_idx2).xy);
-    const Eigen::Vector3d xyz =
-        TriangulatePoint(cam_from_world1, cam_from_world2, point2D1, point2D2);
-    
-    const double tri_angle =
-        CalculateTriangulationAngle(proj_center1, proj_center2, xyz);
-        
-    if (tri_angle >= min_tri_angle_rad) {
-      // Calculate depths from both cameras
-      Eigen::Matrix4d cam_from_world1_4x4 = Eigen::Matrix4d::Identity();
-      Eigen::Matrix4d cam_from_world2_4x4 = Eigen::Matrix4d::Identity();
-      cam_from_world1_4x4.block<3,4>(0,0) = cam_from_world1;
-      cam_from_world2_4x4.block<3,4>(0,0) = cam_from_world2;
-
-      Eigen::Vector4d point_cam1 = cam_from_world1_4x4 * xyz.homogeneous();
-      Eigen::Vector4d point_cam2 = cam_from_world2_4x4 * xyz.homogeneous();
-
-      double depth1 = point_cam1.head<3>().norm();
-      double depth2 = point_cam2.head<3>().norm();
-
-      if (depth1 > std::numeric_limits<double>::epsilon() && 
-          depth2 > std::numeric_limits<double>::epsilon()) {
-        depths.push_back(depth1);
-        depths.push_back(depth2);
-        valid_points.push_back({xyz, {corr.point2D_idx1, corr.point2D_idx2}});
-      }
-    }
-  }
-
-  // Calculate median depth
-  double median_depth = 0;
-  if (!depths.empty()) {
-    std::nth_element(depths.begin(), depths.begin() + depths.size()/2, depths.end());
-    median_depth = depths[depths.size()/2];
-  }
-
-  // Add points that pass the depth check
+  // Add 3D point tracks.
   Track track;
   track.Reserve(2);
   track.AddElement(TrackElement());
   track.AddElement(TrackElement());
   track.Element(0).image_id = image_id1;
   track.Element(1).image_id = image_id2;
-
-  for (const auto& point_data : valid_points) {
-    const Eigen::Vector3d& xyz = point_data.first;
-    const auto& point2D_indices = point_data.second;
-
-    if (HasPointPositiveDepth(cam_from_world1, xyz, median_depth) &&
-        HasPointPositiveDepth(cam_from_world2, xyz, median_depth)) {
-      track.Element(0).point2D_idx = point2D_indices.first;
-      track.Element(1).point2D_idx = point2D_indices.second;
+  for (const auto& corr : corrs) {
+    const Eigen::Vector2d point2D1 =
+        camera1.CamFromImg(image1.Point2D(corr.point2D_idx1).xy);
+    const Eigen::Vector2d point2D2 =
+        camera2.CamFromImg(image2.Point2D(corr.point2D_idx2).xy);
+    const Eigen::Vector3d& xyz =
+        TriangulatePoint(cam_from_world1, cam_from_world2, point2D1, point2D2);
+    const double tri_angle =
+        CalculateTriangulationAngle(proj_center1, proj_center2, xyz);
+    if ((tri_angle >= min_tri_angle_rad) 
+    // && 
+        // [TODO] Check if it's spherical equirectangle camera and use the negative depth too and disable negative depth check for general maybe we don't even need this check
+        // HasPointPositiveDepth(cam_from_world1, xyz) &&
+        // HasPointPositiveDepth(cam_from_world2, xyz)
+        ) 
+        {
+      track.Element(0).point2D_idx = corr.point2D_idx1;
+      track.Element(1).point2D_idx = corr.point2D_idx2;
       obs_manager_->AddPoint3D(xyz, track);
     }
   }
@@ -1337,7 +1299,7 @@ bool IncrementalMapper::EstimateInitialTwoViewGeometry(
           options.init_min_num_inliers &&
       std::abs(two_view_geometry.cam2_from_cam1.translation.z()) <
           options.init_max_forward_motion &&
-      two_view_geometry.tri_angle > 0.6 * DegToRad(options.init_min_tri_angle)) {
+      two_view_geometry.tri_angle >= 0.6 * DegToRad(options.init_min_tri_angle)) {
     return true;
   }
   // else{

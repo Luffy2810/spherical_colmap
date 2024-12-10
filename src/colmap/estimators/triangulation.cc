@@ -119,12 +119,12 @@ void TriangulationEstimator::Estimate(const std::vector<X_t>& point_data,
 
     // Check depth constraints
     bool has_valid_depth = true;
-    for (const auto& pose : pose_data) {
-      if (!HasPointPositiveDepth(pose.proj_matrix, xyz, median_depth)) {
-        has_valid_depth = false;
-        break;
-      }
-    }
+    // for (const auto& pose : pose_data) {
+    //   if (!HasPointPositiveDepth(pose.proj_matrix, xyz, median_depth)) {
+    //     has_valid_depth = false;
+    //     break;
+    //   }
+    // }
 
     if (has_valid_depth) {
       // Check for sufficient triangulation angle
